@@ -7,8 +7,7 @@ the whole training loop, from a raw image to an updated weight, is
 transparent and inspectable.
 
 Built as an independent portfolio project to demonstrate hands-on
-understanding of neural network internals ahead of applying to Georgia
-Tech's OMSCS program (AI specialization).
+understanding of neural network internals.
 
 ## What it does
 
