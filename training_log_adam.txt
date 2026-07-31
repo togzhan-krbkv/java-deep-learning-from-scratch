@@ -1,0 +1,17 @@
+MNIST train data from data/mnist_train.csv
+  Loaded 60000
+MNIST test data from data/mnist_test.csv
+  Loaded 10000
+Building network: architecture = [784, 128, 10], hidden activation = ReLU, output = softmax + cross-entropy, optimizer = Adam
+Training for 10 epochs, batch size 32, learning rate 0.0010
+Epoch 1/10, avg loss = 0.2773, test accuracy = 95.23%, time = 70.7s
+Epoch 2/10, avg loss = 0.1221, test accuracy = 96.70%, time = 72.0s
+Epoch 3/10, avg loss = 0.0840, test accuracy = 97.30%, time = 72.8s
+Epoch 4/10, avg loss = 0.0630, test accuracy = 97.36%, time = 73.3s
+Epoch 5/10, avg loss = 0.0505, test accuracy = 97.74%, time = 73.9s
+Epoch 6/10, avg loss = 0.0403, test accuracy = 97.84%, time = 73.9s
+Epoch 7/10, avg loss = 0.0328, test accuracy = 97.72%, time = 74.2s
+Epoch 8/10, avg loss = 0.0257, test accuracy = 97.69%, time = 74.4s
+Epoch 9/10, avg loss = 0.0221, test accuracy = 97.81%, time = 74.8s
+Epoch 10/10, avg loss = 0.0182, test accuracy = 97.79%, time = 74.9s
+Final test accuracy: 97.79%

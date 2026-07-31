@@ -5,44 +5,74 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class NeuralNetworkTest
 {
-    @Test
-    void learnsXorWithSigmoidAndMeanSquaredError()
-    {
-        // XOR is not linearly separable, so this proves backprop works
-        double[][] inputs = {
-                { 0, 0 },
-                { 0, 1 },
-                { 1, 0 },
-                { 1, 1 }
-        };
-        double[] targets = { 0, 1, 1, 0 };
+    private static final double[][] XOR_INPUTS = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } };
+    private static final double[] XOR_TARGETS = { 0, 1, 1, 0 };
 
-        NeuralNetwork net = new NeuralNetwork(new int[] { 2, 8, 1 }, Activation.SIGMOID, false, 42);
+    @Test
+    void learnsXorWithSgdAndBatchSizeOne()
+    {
+        NeuralNetwork net = new NeuralNetwork(
+                new int[] { 2, 8, 1 }, Activation.SIGMOID, false, 42, () -> new SgdOptimizer(0.5));
 
         for (int epoch = 0; epoch < 20000; epoch++)
         {
-            for (int i = 0; i < inputs.length; i++)
+            for (int i = 0; i < XOR_INPUTS.length; i++)
             {
-                Matrix input = Matrix.columnVector(inputs[i]);
-                Matrix target = Matrix.columnVector(new double[] { targets[i] });
-                net.trainOnExample(input, target, 0.5);
+                Matrix input = Matrix.columnVector(XOR_INPUTS[i]);
+                Matrix target = Matrix.columnVector(new double[] { XOR_TARGETS[i] });
+                net.trainOnExample(input, target);
+                net.applyGradients(1);
             }
         }
 
-        for (int i = 0; i < inputs.length; i++)
+        assertXorConverged(net);
+    }
+
+    @Test
+    void learnsXorWithFullBatchGradientDescent()
+    {
+        NeuralNetwork net = new NeuralNetwork(
+                new int[] { 2, 8, 1 }, Activation.SIGMOID, false, 42, () -> new SgdOptimizer(0.5));
+
+        for (int epoch = 0; epoch < 20000; epoch++)
         {
-            Matrix input = Matrix.columnVector(inputs[i]);
-            double predicted = net.predict(input).get(0, 0);
-            double expected = targets[i];
-            assertEquals(expected, predicted, 0.1,
-                    "XOR(" + (int) inputs[i][0] + ", " + (int) inputs[i][1] + ") should be about " + expected);
+            for (int i = 0; i < XOR_INPUTS.length; i++)
+            {
+                Matrix input = Matrix.columnVector(XOR_INPUTS[i]);
+                Matrix target = Matrix.columnVector(new double[] { XOR_TARGETS[i] });
+                net.trainOnExample(input, target);
+            }
+            net.applyGradients(XOR_INPUTS.length);
         }
+
+        assertXorConverged(net);
+    }
+
+    @Test
+    void learnsXorWithAdam()
+    {
+        NeuralNetwork net = new NeuralNetwork(
+                new int[] { 2, 8, 1 }, Activation.SIGMOID, false, 42, () -> new AdamOptimizer(0.05));
+
+        for (int epoch = 0; epoch < 5000; epoch++)
+        {
+            for (int i = 0; i < XOR_INPUTS.length; i++)
+            {
+                Matrix input = Matrix.columnVector(XOR_INPUTS[i]);
+                Matrix target = Matrix.columnVector(new double[] { XOR_TARGETS[i] });
+                net.trainOnExample(input, target);
+            }
+            net.applyGradients(XOR_INPUTS.length);
+        }
+
+        assertXorConverged(net);
     }
 
     @Test
     void softmaxOutputSumsToOne()
     {
-        NeuralNetwork net = new NeuralNetwork(new int[] { 4, 6, 3 }, Activation.RELU, true, 7);
+        NeuralNetwork net = new NeuralNetwork(
+                new int[] { 4, 6, 3 }, Activation.RELU, true, 7, () -> new SgdOptimizer(0.1));
         Matrix input = Matrix.columnVector(new double[] { 0.5, -0.2, 0.9, 0.1 });
 
         Matrix output = net.predict(input);
@@ -59,16 +89,17 @@ class NeuralNetworkTest
     @Test
     void crossEntropyLossDecreasesWithTraining()
     {
-        // Trivial 3-class one-hot problem: loss should drop with training
         double[][] inputs = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
         double[][] targets = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
 
-        NeuralNetwork net = new NeuralNetwork(new int[] { 3, 5, 3 }, Activation.RELU, true, 11);
+        NeuralNetwork net = new NeuralNetwork(
+                new int[] { 3, 5, 3 }, Activation.RELU, true, 11, () -> new SgdOptimizer(0.1));
 
         double firstLoss = 0.0;
         for (int i = 0; i < inputs.length; i++)
         {
-            firstLoss += net.trainOnExample(Matrix.columnVector(inputs[i]), Matrix.columnVector(targets[i]), 0.1);
+            firstLoss += net.trainOnExample(Matrix.columnVector(inputs[i]), Matrix.columnVector(targets[i]));
+            net.applyGradients(1);
         }
 
         double lastLoss = firstLoss;
@@ -77,10 +108,21 @@ class NeuralNetworkTest
             lastLoss = 0.0;
             for (int i = 0; i < inputs.length; i++)
             {
-                lastLoss += net.trainOnExample(Matrix.columnVector(inputs[i]), Matrix.columnVector(targets[i]), 0.1);
+                lastLoss += net.trainOnExample(Matrix.columnVector(inputs[i]), Matrix.columnVector(targets[i]));
+                net.applyGradients(1);
             }
         }
 
-        assertTrue(lastLoss < firstLoss, "Loss should decrease with training (first=" + firstLoss + ", last=" + lastLoss + ")");
+        assertTrue(lastLoss < firstLoss, "first=" + firstLoss + ", last=" + lastLoss);
+    }
+
+    private void assertXorConverged(NeuralNetwork net)
+    {
+        for (int i = 0; i < XOR_INPUTS.length; i++)
+        {
+            Matrix input = Matrix.columnVector(XOR_INPUTS[i]);
+            double predicted = net.predict(input).get(0, 0);
+            assertEquals(XOR_TARGETS[i], predicted, 0.1);
+        }
     }
 }
