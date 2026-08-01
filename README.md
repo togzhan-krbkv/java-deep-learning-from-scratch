@@ -24,6 +24,10 @@ standard multilayer perceptron with:
 - Pluggable optimizers: plain SGD or Adam (adaptive moments with bias
   correction), each layer holding independent optimizer state per
   parameter
+- Layers implement a common `Layer` interface (forward, backward,
+  applyGradients), so a network is just a list of interchangeable
+  stages; `DenseLayer` is the only implementation so far, with room for
+  others (e.g. a convolutional layer) to plug in the same way
 
 ## Project structure
 
@@ -39,14 +43,16 @@ neural-network-java/
 │   ├── Optimizer.java                  Strategy interface for parameter updates
 │   ├── SgdOptimizer.java               Plain gradient descent
 │   ├── AdamOptimizer.java              Adam with bias-corrected moments
-│   ├── Layer.java                      One fully connected layer
-│   ├── NeuralNetwork.java              Full network, forward and backward
+│   ├── Layer.java                      Interface: forward, backward, applyGradients
+│   ├── DenseLayer.java                 Fully-connected Layer implementation
+│   ├── NeuralNetwork.java              A sequence of Layers, forward and backward
 │   ├── MnistLoader.java                Loads MNIST from CSV
 │   ├── Trainer.java                    Mini-batch epoch loop, shuffling, accuracy
 │   └── Main.java                       Entry point
 ├── src/test/java/nn/
 │   ├── MatrixTest.java                 8 unit tests for Matrix
 │   ├── OptimizerTest.java              4 unit tests for SGD and Adam
+│   ├── DenseLayerTest.java             3 unit tests for DenseLayer in isolation
 │   └── NeuralNetworkTest.java          XOR convergence (3 setups), softmax, loss tests
 └── data/
     ├── mnist_train.csv                 Not tracked in git, see below
@@ -68,13 +74,15 @@ target `y`, the loss for one example is `-sum(y_i * log(p_i))` where
 **Backward pass.** Backpropagation is chain-rule gradient computation
 running from the output layer back to the input. For softmax +
 cross-entropy specifically, the derivative of the loss with respect to
-the layer's pre-activation simplifies neatly to `predicted - target`,
-so that specific gradient is computed directly rather than by
-multiplying by an activation derivative (which is why `Layer` has both
-`backward` and `backwardWithPrecomputedDelta`). Every other layer uses
-the standard chain rule: multiply the incoming gradient by the layer's
-activation derivative, then compute the weight and bias gradients from
-the cached input.
+the output layer's pre-activation simplifies neatly to
+`predicted - target`. The output layer's own activation is `LINEAR`
+(softmax is applied separately, across the whole output vector, not
+inside the layer), and `LINEAR`'s derivative is always 1, so
+multiplying by it changes nothing: the same `backward()` method used
+by every other layer handles this case correctly without a special
+path. Every layer's `backward()` multiplies the incoming gradient by
+its activation derivative, computes the weight and bias gradients from
+the cached input, and accumulates them for the current batch.
 
 **Weight update.** Each layer accumulates a weight gradient and a bias
 gradient across a batch, then hands the averaged gradient to an
@@ -85,6 +93,23 @@ and scales the step by `1 / (sqrt(v) + epsilon)`, adapting the
 effective learning rate per parameter. Each layer holds independent
 optimizer instances for its weights and biases, so their moment
 estimates never mix.
+
+## Layer architecture
+
+`Layer` is an interface (`forward`, `backward`, `applyGradients`);
+`DenseLayer` is its only implementation right now. `NeuralNetwork` holds
+a `List<Layer>` and never depends on `DenseLayer` directly, so a future
+layer type (a convolutional layer, for example) only needs to implement
+the same three methods to work with the existing network, training
+loop, and optimizers unchanged.
+
+Earlier there were two backward methods: a general one, and a second
+one used only for the output layer under softmax + cross-entropy, to
+skip multiplying by an activation derivative. That distinction turned
+out to be unnecessary: the output layer's activation is already
+`LINEAR` when softmax is used, and `LINEAR`'s derivative is always 1,
+so the general `backward()` produces the identical result. Removing
+the special case made `Layer` a strictly smaller, cleaner interface.
 
 ## How to build and run
 
