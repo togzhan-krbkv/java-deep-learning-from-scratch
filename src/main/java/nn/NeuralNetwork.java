@@ -6,7 +6,7 @@ import java.util.Random;
 import java.util.function.Supplier;
 
 /**
- * NeuralNetwork, a multilayer perceptron trained by backpropagation.
+ * NeuralNetwork, a sequence of Layer stages trained by backpropagation.
  * Softmax output uses cross-entropy loss; otherwise sigmoid output uses
  * mean squared error. Gradients accumulate per example; call
  * applyGradients() after a batch to update weights.
@@ -41,7 +41,7 @@ public class NeuralNetwork
             {
                 activationForLayer = hiddenActivation;
             }
-            layers.add(new Layer(layerSizes[i], layerSizes[i + 1], activationForLayer, rng, optimizerFactory));
+            layers.add(new DenseLayer(layerSizes[i], layerSizes[i + 1], activationForLayer, rng, optimizerFactory));
         }
     }
 
@@ -60,31 +60,21 @@ public class NeuralNetwork
         Matrix output = predict(input);
 
         double loss;
-        Matrix outputDelta;
+        Matrix delta;
         if (softmaxOutput)
         {
             loss = crossEntropyLoss(output, target);
-            outputDelta = output.subtract(target);
+            delta = output.subtract(target);
         }
         else
         {
             loss = meanSquaredError(output, target);
-            outputDelta = output.subtract(target).scale(2.0 / output.getRows());
+            delta = output.subtract(target).scale(2.0 / output.getRows());
         }
 
-        Matrix delta = outputDelta;
         for (int i = layers.size() - 1; i >= 0; i--)
         {
-            Layer layer = layers.get(i);
-            boolean isOutputLayer = (i == layers.size() - 1);
-            if (isOutputLayer && softmaxOutput)
-            {
-                delta = layer.backwardWithPrecomputedDelta(delta);
-            }
-            else
-            {
-                delta = layer.backward(delta);
-            }
+            delta = layers.get(i).backward(delta);
         }
 
         return loss;
