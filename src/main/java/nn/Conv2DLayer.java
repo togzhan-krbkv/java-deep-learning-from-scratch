@@ -12,7 +12,7 @@ import java.util.function.Supplier;
  *
  * @author Togzhan K.
  */
-public class Conv2DLayer
+public class Conv2DLayer implements Tensor3DLayer, Trainable
 {
     private final Tensor3D[] filters;
     private final double[] biases;
@@ -73,6 +73,7 @@ public class Conv2DLayer
         resetGradientAccumulators();
     }
 
+    @Override
     public Tensor3D forward(Tensor3D input)
     {
         this.lastPaddedInput = pad(input, padding);
@@ -107,6 +108,7 @@ public class Conv2DLayer
         return lastActivation;
     }
 
+    @Override
     public Tensor3D backward(Tensor3D dLossDActivation)
     {
         Tensor3D activationDerivative = lastActivation.map(activation::derivative);
@@ -150,6 +152,7 @@ public class Conv2DLayer
         return crop(paddedInputGradient, padding);
     }
 
+    @Override
     public void applyGradients(int batchSize)
     {
         for (int f = 0; f < outputChannels; f++)

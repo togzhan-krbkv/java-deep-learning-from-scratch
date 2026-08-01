@@ -8,7 +8,7 @@ package nn;
  *
  * @author Togzhan K.
  */
-public class MaxPoolLayer
+public class MaxPoolLayer implements Tensor3DLayer
 {
     private final int poolSize;
     private final int stride;
@@ -23,6 +23,7 @@ public class MaxPoolLayer
         this.stride = stride;
     }
 
+    @Override
     public Tensor3D forward(Tensor3D input)
     {
         this.lastInput = input;
@@ -67,6 +68,7 @@ public class MaxPoolLayer
         return output;
     }
 
+    @Override
     public Tensor3D backward(Tensor3D dLossDOutput)
     {
         Tensor3D inputGradient = Tensor3D.zeros(

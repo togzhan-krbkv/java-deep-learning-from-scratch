@@ -1,0 +1,16 @@
+MNIST train data from data/mnist_train.csv
+  Loaded 60000
+MNIST test data from data/mnist_test.csv
+  Loaded 10000
+Training for 10 epochs, batch size 32, learning rate 0.0010
+Epoch 1/10, avg loss = 0.1899, test accuracy = 97.41%, time = 127.1s
+Epoch 2/10, avg loss = 0.0681, test accuracy = 98.27%, time = 131.2s
+Epoch 3/10, avg loss = 0.0497, test accuracy = 98.61%, time = 133.9s
+Epoch 4/10, avg loss = 0.0390, test accuracy = 98.57%, time = 135.4s
+Epoch 5/10, avg loss = 0.0297, test accuracy = 98.70%, time = 137.1s
+Epoch 6/10, avg loss = 0.0252, test accuracy = 98.89%, time = 137.5s
+Epoch 7/10, avg loss = 0.0207, test accuracy = 98.86%, time = 138.4s
+Epoch 8/10, avg loss = 0.0173, test accuracy = 98.84%, time = 138.9s
+Epoch 9/10, avg loss = 0.0147, test accuracy = 98.73%, time = 139.2s
+Epoch 10/10, avg loss = 0.0126, test accuracy = 98.72%, time = 139.3s
+Final test accuracy: 98.72%
