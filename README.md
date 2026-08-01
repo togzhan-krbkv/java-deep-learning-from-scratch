@@ -1,4 +1,4 @@
-# Neural Network in Java, from Scratch
+# Deep Learning Library in Java, from Scratch
 
 A neural network library implemented from scratch in Java with no
 machine learning libraries: a multilayer perceptron and a convolutional
@@ -11,6 +11,27 @@ and inspectable.
 Built as an independent portfolio project to demonstrate hands-on
 understanding of neural network internals ahead of applying to Georgia
 Tech's OMSCS program (AI specialization).
+
+## Development history
+
+This project grew in stages, each its own branch and pull request:
+
+1. **Multilayer perceptron**: `Matrix`, `Activation`, a single `Layer`
+   class, backpropagation by hand, verified on XOR, then trained on
+   MNIST with plain per-example SGD.
+2. **Mini-batch training and pluggable optimizers**: gradients
+   accumulate across a batch instead of updating immediately;
+   `SgdOptimizer` and `AdamOptimizer`, each parameter tensor holding
+   independent optimizer state.
+3. **Flexible layer architecture**: `Layer` split into an interface
+   and its implementation, `DenseLayer`; a mathematical simplification
+   collapsed two backward methods into one.
+4. **Convolutional network**: `Tensor3D` for feature maps,
+   `Conv2DLayer` (forward pass first, backward pass verified against
+   an independently checked NumPy prototype, then numerical gradient
+   checking in Java itself), `MaxPoolLayer`, `FlattenLayer`, assembled
+   into `ConvolutionalNetwork` and trained end to end on MNIST,
+   beating the MLP baseline.
 
 ## What it does
 
@@ -38,7 +59,7 @@ Shared features:
 ## Project structure
 
 ```
-neural-network-java/
+java-deep-learning-from-scratch/
 ├── README.md
 ├── training_log.txt                    MLP, SGD run, batch=1
 ├── training_log_adam.txt               MLP, Adam run, batch=32
