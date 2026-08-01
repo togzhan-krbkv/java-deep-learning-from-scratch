@@ -104,6 +104,23 @@ public class Tensor3D
         return result;
     }
 
+    public Tensor3D hadamard(Tensor3D other)
+    {
+        requireSameShape(other);
+        Tensor3D result = new Tensor3D(channels, height, width);
+        for (int ch = 0; ch < channels; ch++)
+        {
+            for (int r = 0; r < height; r++)
+            {
+                for (int c = 0; c < width; c++)
+                {
+                    result.data[ch][r][c] = this.data[ch][r][c] * other.data[ch][r][c];
+                }
+            }
+        }
+        return result;
+    }
+
     public Tensor3D scale(double scalar)
     {
         Tensor3D result = new Tensor3D(channels, height, width);

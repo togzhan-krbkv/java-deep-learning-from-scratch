@@ -74,6 +74,18 @@ class Tensor3DTest
     }
 
     @Test
+    void hadamardMultipliesElementWise()
+    {
+        Tensor3D a = new Tensor3D(1, 2, 2).map(x -> 3.0);
+        Tensor3D b = new Tensor3D(1, 2, 2).map(x -> 4.0);
+
+        Tensor3D result = a.hadamard(b);
+
+        assertEquals(12.0, result.get(0, 0, 0));
+        assertEquals(12.0, result.get(0, 1, 1));
+    }
+
+    @Test
     void mapAppliesFunctionToEveryElement()
     {
         Tensor3D t = new Tensor3D(1, 2, 2).map(x -> 3.0);

@@ -30,7 +30,7 @@ class Conv2DLayerTest
     void forwardMatchesHandComputedValuesNoPaddingStrideOne()
     {
         Conv2DLayer layer = new Conv2DLayer(
-                new Tensor3D[] { onesFilter(1, 3) }, new double[] { 0 }, 1, 0, Activation.LINEAR);
+                new Tensor3D[] { onesFilter(1, 3) }, new double[] { 0 }, 1, 0, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(makeInput4x4());
 
@@ -53,7 +53,7 @@ class Conv2DLayerTest
         input.set(0, 1, 1, 4);
 
         Conv2DLayer layer = new Conv2DLayer(
-                new Tensor3D[] { onesFilter(1, 2) }, new double[] { 0 }, 1, 1, Activation.LINEAR);
+                new Tensor3D[] { onesFilter(1, 2) }, new double[] { 0 }, 1, 1, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(input);
 
@@ -73,7 +73,7 @@ class Conv2DLayerTest
     void forwardMatchesHandComputedValuesWithStrideTwo()
     {
         Conv2DLayer layer = new Conv2DLayer(
-                new Tensor3D[] { onesFilter(1, 2) }, new double[] { 0 }, 2, 0, Activation.LINEAR);
+                new Tensor3D[] { onesFilter(1, 2) }, new double[] { 0 }, 2, 0, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(makeInput4x4());
 
@@ -89,7 +89,7 @@ class Conv2DLayerTest
     void biasIsAddedToEveryOutputPosition()
     {
         Conv2DLayer layer = new Conv2DLayer(
-                new Tensor3D[] { onesFilter(1, 3) }, new double[] { 100 }, 1, 0, Activation.LINEAR);
+                new Tensor3D[] { onesFilter(1, 3) }, new double[] { 100 }, 1, 0, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(makeInput4x4());
 
@@ -111,7 +111,7 @@ class Conv2DLayerTest
         input.set(1, 1, 1, 10);
 
         Conv2DLayer layer = new Conv2DLayer(
-                new Tensor3D[] { onesFilter(2, 2) }, new double[] { 0 }, 1, 0, Activation.LINEAR);
+                new Tensor3D[] { onesFilter(2, 2) }, new double[] { 0 }, 1, 0, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(input);
 
@@ -125,7 +125,7 @@ class Conv2DLayerTest
     {
         Conv2DLayer layer = new Conv2DLayer(
                 new Tensor3D[] { onesFilter(1, 3), onesFilter(1, 3).scale(2) },
-                new double[] { 0, 0 }, 1, 0, Activation.LINEAR);
+                new double[] { 0, 0 }, 1, 0, Activation.LINEAR, () -> new SgdOptimizer(0.01));
 
         Tensor3D output = layer.forward(makeInput4x4());
 
@@ -144,7 +144,7 @@ class Conv2DLayerTest
 
         int expected = Conv2DLayer.computeOutputSize(inputSize, kernelSize, stride, padding);
 
-        Conv2DLayer layer = new Conv2DLayer(1, 1, kernelSize, stride, padding, Activation.LINEAR, new Random(1));
+        Conv2DLayer layer = new Conv2DLayer(1, 1, kernelSize, stride, padding, Activation.LINEAR, new Random(1), () -> new SgdOptimizer(0.01));
         Tensor3D output = layer.forward(new Tensor3D(1, inputSize, inputSize));
 
         assertEquals(expected, output.getHeight());
@@ -154,7 +154,7 @@ class Conv2DLayerTest
     @Test
     void randomlyInitializedFiltersProduceCorrectOutputShape()
     {
-        Conv2DLayer layer = new Conv2DLayer(3, 8, 5, 1, 2, Activation.RELU, new Random(42));
+        Conv2DLayer layer = new Conv2DLayer(3, 8, 5, 1, 2, Activation.RELU, new Random(42), () -> new SgdOptimizer(0.01));
         Tensor3D input = new Tensor3D(3, 28, 28);
 
         Tensor3D output = layer.forward(input);
