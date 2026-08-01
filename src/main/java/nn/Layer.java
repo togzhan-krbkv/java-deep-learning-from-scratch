@@ -6,11 +6,9 @@ package nn;
  *
  * @author Togzhan K.
  */
-public interface Layer
+public interface Layer extends Trainable
 {
     Matrix forward(Matrix input);
 
     Matrix backward(Matrix gradient);
-
-    void applyGradients(int batchSize);
 }
