@@ -1,10 +1,11 @@
 package nn;
 
 import java.util.Random;
+import java.util.function.Supplier;
 
 /**
- * Layer, a single fully-connected layer: weights, biases, and an
- * activation function.
+ * Layer, a single fully-connected layer. Accumulates gradients across a
+ * batch; applyGradients() applies them through the layer's Optimizer.
  *
  * @author Togzhan K.
  */
@@ -13,17 +14,25 @@ public class Layer
     private Matrix weights;
     private Matrix biases;
     private final Activation activation;
+    private final Optimizer weightsOptimizer;
+    private final Optimizer biasesOptimizer;
 
     private Matrix lastInput;
     private Matrix lastActivation;
 
-    public Layer(int inputSize, int outputSize, Activation activation, Random rng)
+    private Matrix weightGradientSum;
+    private Matrix biasGradientSum;
+
+    public Layer(int inputSize, int outputSize, Activation activation, Random rng, Supplier<Optimizer> optimizerFactory)
     {
-        // He-style scaling, keeps activations stable across layer sizes
         double scale = Math.sqrt(2.0 / inputSize);
         this.weights = Matrix.random(outputSize, inputSize, scale, rng);
         this.biases = Matrix.zeros(outputSize, 1);
         this.activation = activation;
+        this.weightsOptimizer = optimizerFactory.get();
+        this.biasesOptimizer = optimizerFactory.get();
+        this.weightGradientSum = Matrix.zeros(outputSize, inputSize);
+        this.biasGradientSum = Matrix.zeros(outputSize, 1);
     }
 
     public int getOutputSize()
@@ -31,7 +40,6 @@ public class Layer
         return weights.getRows();
     }
 
-    /** Computes weights * input + biases, then applies the activation function */
     public Matrix forward(Matrix input)
     {
         this.lastInput = input;
@@ -40,29 +48,35 @@ public class Layer
         return lastActivation;
     }
 
-    /** dLoss/dActivation from the next layer, backpropagated through this layer */
-    public Matrix backward(Matrix dLossDActivation, double learningRate)
+    public Matrix backward(Matrix dLossDActivation)
     {
         Matrix activationDerivative = lastActivation.map(activation::derivative);
         Matrix delta = dLossDActivation.hadamard(activationDerivative);
-        return applyGradients(delta, learningRate);
+        return accumulateGradients(delta);
     }
 
-    /** For an output layer whose loss gradient is already computed (softmax + cross-entropy) */
-    public Matrix backwardWithPrecomputedDelta(Matrix delta, double learningRate)
+    public Matrix backwardWithPrecomputedDelta(Matrix delta)
     {
-        return applyGradients(delta, learningRate);
+        return accumulateGradients(delta);
     }
 
-    private Matrix applyGradients(Matrix delta, double learningRate)
+    private Matrix accumulateGradients(Matrix delta)
     {
         Matrix weightGradient = delta.multiply(lastInput.transpose());
-        Matrix biasGradient = delta;
-        Matrix dLossDInput = weights.transpose().multiply(delta);
+        weightGradientSum = weightGradientSum.add(weightGradient);
+        biasGradientSum = biasGradientSum.add(delta);
+        return weights.transpose().multiply(delta);
+    }
 
-        weights = weights.subtract(weightGradient.scale(learningRate));
-        biases = biases.subtract(biasGradient.scale(learningRate));
+    public void applyGradients(int batchSize)
+    {
+        Matrix avgWeightGradient = weightGradientSum.scale(1.0 / batchSize);
+        Matrix avgBiasGradient = biasGradientSum.scale(1.0 / batchSize);
 
-        return dLossDInput;
+        weights = weightsOptimizer.update(weights, avgWeightGradient);
+        biases = biasesOptimizer.update(biases, avgBiasGradient);
+
+        weightGradientSum = Matrix.zeros(weights.getRows(), weights.getCols());
+        biasGradientSum = Matrix.zeros(biases.getRows(), biases.getCols());
     }
 }

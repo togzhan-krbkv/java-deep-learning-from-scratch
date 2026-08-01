@@ -7,7 +7,8 @@ the whole training loop, from a raw image to an updated weight, is
 transparent and inspectable.
 
 Built as an independent portfolio project to demonstrate hands-on
-understanding of neural network internals.
+understanding of neural network internals ahead of applying to Georgia
+Tech's OMSCS program (AI specialization).
 
 ## What it does
 
@@ -18,27 +19,35 @@ standard multilayer perceptron with:
 - ReLU activation in the hidden layer
 - Softmax output layer trained with cross-entropy loss
 - He-style weight initialization
-- Stochastic gradient descent, one example at a time, with the training
-  set reshuffled each epoch
+- Mini-batch gradient descent, with gradients accumulated across a batch
+  and applied once per batch
+- Pluggable optimizers: plain SGD or Adam (adaptive moments with bias
+  correction), each layer holding independent optimizer state per
+  parameter
 
 ## Project structure
 
 ```
 neural-network-java/
 ├── README.md
-├── training_log.txt                    Full console output from the MNIST run below
+├── training_log.txt                    SGD run, batch=1
+├── training_log_adam.txt               Adam run, batch=32
 ├── pom.xml                             Maven project descriptor
 ├── src/main/java/nn/
 │   ├── Matrix.java                     Dense matrix, all linear algebra
 │   ├── Activation.java                 Sigmoid, ReLU, Linear + derivatives
+│   ├── Optimizer.java                  Strategy interface for parameter updates
+│   ├── SgdOptimizer.java               Plain gradient descent
+│   ├── AdamOptimizer.java              Adam with bias-corrected moments
 │   ├── Layer.java                      One fully connected layer
 │   ├── NeuralNetwork.java              Full network, forward and backward
 │   ├── MnistLoader.java                Loads MNIST from CSV
-│   ├── Trainer.java                    Epoch loop, shuffling, accuracy
+│   ├── Trainer.java                    Mini-batch epoch loop, shuffling, accuracy
 │   └── Main.java                       Entry point
 ├── src/test/java/nn/
 │   ├── MatrixTest.java                 8 unit tests for Matrix
-│   └── NeuralNetworkTest.java          XOR convergence and softmax tests
+│   ├── OptimizerTest.java              4 unit tests for SGD and Adam
+│   └── NeuralNetworkTest.java          XOR convergence (3 setups), softmax, loss tests
 └── data/
     ├── mnist_train.csv                 Not tracked in git, see below
     └── mnist_test.csv                  Not tracked in git, see below
@@ -67,10 +76,15 @@ the standard chain rule: multiply the incoming gradient by the layer's
 activation derivative, then compute the weight and bias gradients from
 the cached input.
 
-**Weight update.** Standard gradient descent: for each weight,
-`w = w - learningRate * gradient`. Learning rate is a fixed
-hyperparameter (no adaptive optimizers like Adam here, on purpose, to
-keep the implementation minimal and understandable).
+**Weight update.** Each layer accumulates a weight gradient and a bias
+gradient across a batch, then hands the averaged gradient to an
+`Optimizer`. `SgdOptimizer` applies plain gradient descent,
+`w = w - learningRate * gradient`. `AdamOptimizer` tracks a running
+mean and variance of the gradient (`m` and `v`), bias-corrects them,
+and scales the step by `1 / (sqrt(v) + epsilon)`, adapting the
+effective learning rate per parameter. Each layer holds independent
+optimizer instances for its weights and biases, so their moment
+estimates never mix.
 
 ## How to build and run
 
@@ -96,35 +110,47 @@ place them in `data/` before running.
 
 Verified sanity checks (all pass):
 
-- The XOR unit test trains a `2, 8, 1` network with sigmoid + MSE and
-  reaches predictions within 1% of the correct 0/1 values. This is the
-  classic proof that forward pass, backprop, and gradient descent are
-  all implemented correctly, since XOR is not linearly separable and
+- The XOR unit test converges under three different optimization setups:
+  plain SGD updating after every example, full-batch SGD, and Adam. This
+  is the classic proof that forward pass, backprop, and gradient descent
+  are all implemented correctly, since XOR is not linearly separable and
   cannot be learned by any network without a hidden layer.
+- Adam's first update step matches a hand-computed value, and its
+  internal moment estimates persist correctly across calls.
 - Softmax outputs sum to 1.0 to within floating point tolerance.
 - Cross-entropy loss decreases with training on a trivial three-class
   classification problem.
 
 Trained end to end on the full MNIST dataset (60,000 training images,
 10,000 test images) on a `784, 128, 10` architecture for 10 epochs,
-learning rate 0.01:
+under two configurations:
 
-| Epoch | Avg loss | Test accuracy |
-|-------|----------|----------------|
-| 1     | 0.2287   | 96.32%         |
-| 2     | 0.0999   | 96.40%         |
-| 3     | 0.0719   | 97.45%         |
-| 4     | 0.0550   | 97.41%         |
-| 5     | 0.0443   | 97.87%         |
-| 6     | 0.0354   | 97.86%         |
-| 7     | 0.0268   | 97.90%         |
-| 8     | 0.0215   | 97.66%         |
-| 9     | 0.0169   | 97.76%         |
-| 10    | 0.0129   | **97.97%**     |
+| Epoch | SGD, batch=1, lr=0.01 | Adam, batch=32, lr=0.001 |
+|-------|------------------------|---------------------------|
+| 1     | 96.32%                 | 95.23%                    |
+| 2     | 96.40%                 | 96.70%                    |
+| 3     | 97.45%                 | 97.30%                    |
+| 4     | 97.41%                 | 97.36%                    |
+| 5     | 97.87%                 | 97.74%                    |
+| 6     | 97.86%                 | 97.84%                    |
+| 7     | 97.90%                 | 97.72%                    |
+| 8     | 97.66%                 | 97.69%                    |
+| 9     | 97.76%                 | 97.81%                    |
+| 10    | **97.97%**             | **97.79%**                |
 
-Full run output is in [training_log.txt](./training_log.txt). Loss drops
-steadily and test accuracy climbs from 96.3% to 97.97%, in line with
-published benchmarks for this architecture on MNIST.
+Full run output for both is in [training_log.txt](./training_log.txt)
+and [training_log_adam.txt](./training_log_adam.txt).
+
+Adam with batch size 32 does not train faster per epoch here, and
+reaches a very slightly lower final accuracy than plain per-example SGD.
+This is expected given the implementation: `Layer.forward`/`backward`
+still processes one example at a time, so batching only changes how
+often gradients are applied (1,875 updates per epoch instead of
+60,000), not how much computation each epoch does. Mini-batching here
+gives its usual statistical benefit (averaged, less noisy gradients)
+but not the computational speedup that real frameworks get from
+vectorizing the whole batch into a single matrix multiplication. That
+vectorization is a natural next step.
 
 ## Why from scratch
 

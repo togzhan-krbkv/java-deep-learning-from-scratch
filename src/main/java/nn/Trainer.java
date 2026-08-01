@@ -5,25 +5,24 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Trainer, runs the training loop: shuffles each epoch, tracks average
- * loss, and reports test-set accuracy.
+ * Trainer, runs the training loop in mini-batches: shuffles each epoch,
+ * accumulates gradients over each batch, then applies them.
  *
  * @author Togzhan K.
  */
 public class Trainer
 {
     private final NeuralNetwork network;
-    private final double learningRate;
+    private final int batchSize;
     private final long shuffleSeed;
 
-    public Trainer(NeuralNetwork network, double learningRate, long shuffleSeed)
+    public Trainer(NeuralNetwork network, int batchSize, long shuffleSeed)
     {
         this.network = network;
-        this.learningRate = learningRate;
+        this.batchSize = batchSize;
         this.shuffleSeed = shuffleSeed;
     }
 
-    /** Trains for the given number of epochs; returns final test accuracy */
     public double train(List<MnistLoader.Example> trainSet,
                         List<MnistLoader.Example> testSet,
                         int epochs)
@@ -37,9 +36,15 @@ public class Trainer
 
             long start = System.nanoTime();
             double totalLoss = 0.0;
-            for (MnistLoader.Example example : trainSet)
+            for (int i = 0; i < trainSet.size(); i += batchSize)
             {
-                totalLoss += network.trainOnExample(example.input, example.target, learningRate);
+                int end = Math.min(i + batchSize, trainSet.size());
+                for (int j = i; j < end; j++)
+                {
+                    MnistLoader.Example example = trainSet.get(j);
+                    totalLoss += network.trainOnExample(example.input, example.target);
+                }
+                network.applyGradients(end - i);
             }
             double avgLoss = totalLoss / trainSet.size();
             double elapsedSec = (System.nanoTime() - start) / 1e9;
@@ -55,7 +60,6 @@ public class Trainer
         return finalAccuracy;
     }
 
-    /** Fraction of test examples the network classifies correctly */
     public double evaluate(List<MnistLoader.Example> testSet)
     {
         int correct = 0;
